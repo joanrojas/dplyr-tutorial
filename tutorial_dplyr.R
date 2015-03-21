@@ -1,6 +1,8 @@
 library(dplyr)
 library(ggplot2)
 library(ggvis)
+require(gridExtra)
+setwd("Dropbox/GitHub/dplyr-tutorial/")
 
 flights <- tbl_df(read.csv("flights.csv", stringsAsFactors = FALSE))
 flights$date <- as.Date(flights$date)
@@ -8,7 +10,7 @@ flights$date <- as.Date(flights$date)
 weather <- tbl_df(read.csv("weather.csv", stringsAsFactors = FALSE))
 weather$date <- as.Date(weather$date)
 
-planes <- tbl_df(read.csv("planes.csv", stringsAsFactors = FALSE))
+planes_ds <- tbl_df(read.csv("planes.csv", stringsAsFactors = FALSE))
 
 airports <- tbl_df(read.csv("airports.csv", stringsAsFactors = FALSE))
 
@@ -120,5 +122,79 @@ flights %>%
   ggplot(aes(x = carrier, y = me_delay, size= n )) + geom_point() + scale_size_area()
 
 
-  
+
+#PART II: Hadley Wickham
+
+planes <- flights %>%
+  filter(!is.na(arr_delay)) %>%
+  group_by(plane) %>% 
+  filter(n() > 30) 
+
+planes %>%
+  mutate(z_delay = (arr_delay - mean(arr_delay))/sd(arr_delay)) %>%
+  filter(z_delay > 5) 
+
+
+#min_rank, row_number
+planes %>% 
+  filter(min_rank(desc(arr_delay)) <=2 )
+#for every flight, picks less than 5 top ranking in delay
+
+#lag function takes the last value
+del<- flights %>%
+  group_by(date) %>%
+  summarise(delay = mean(dep_delay, na.rm = TRUE)) %>%
+  mutate(slag = delay - lag(delay))
+
+  grid.arrange(ggplot(del,aes(x = date, y = delay)) + geom_line(color = "steelblue") + 
+               labs( y = "delay [min]") + ggtitle("Delay evolution") ,
+               ggplot(del,aes(x = date, y = slag)) + geom_line(),
+               ncol= 2)
+
+location <- airports %>%
+  select(dest = iata, name = airport, lat , long)
+#IATA is the destination
+
+
+delays <- flights %>% 
+  group_by(dest) %>% 
+  summarise(arr_delay = mean(arr_delay, na.rm= TRUE)) %>%
+  arrange(desc(arr_delay)) %>%
+  left_join(location, by = "dest")
+
+hourly_delay <- flights %>%
+  group_by(date,hour) %>%
+  filter(!is.na(dep_delay)) %>%
+  summarise( delay = mean(dep_delay), n = n()) %>%
+  filter(n >10)
+
+delay_weather <- left_join(weather, hourly_delay, by = c('date', 'hour'))
+
+ggplot(delay_weather, aes(x = temp, y = delay)) + geom_point() 
+ggplot(delay_weather, aes(x = wind_speed, y = delay)) + geom_point() 
+
+ggplot(delay_weather, aes(y = delay, x = conditions)) + geom_boxplot() + 
+ labs(x = "CONDITIONS") + theme(axis.text.x= element_text(angle = 90))
+
+ggplot(delay_weather, aes(y = delay, x = events)) + geom_boxplot() + 
+  labs(x = "CONDITIONS") + theme(axis.text.x= element_text(angle = 90))
+
+#Are older planes more likely to be delayed??
+View(planes_ds)
+
+planes_ds %>%
+  group_by(type) %>%
+  tally()
+
+
+plane_delay <- flights %>%
+  group_by(plane) %>%
+  summarise(delay = mean(dep_delay, na.rm = TRUE), n = n(), dist = mean(dist, na.rm = TRUE))
+
+plane_delay <- left_join(plane_delay, planes_ds, by = "plane") 
+View(plane_delay)
+
+plane_delay %>%
+  filter(n >50) %>%
+  ggplot(aes(y = delay, x = year)) + geom_point() + geom_smooth() + xlim(1980,2015 )
 
