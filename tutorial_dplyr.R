@@ -2,7 +2,7 @@ library(dplyr)
 library(ggplot2)
 library(ggvis)
 require(gridExtra)
-setwd("Dropbox/GitHub/dplyr-tutorial/")
+
 
 flights <- tbl_df(read.csv("flights.csv", stringsAsFactors = FALSE))
 flights$date <- as.Date(flights$date)
@@ -73,16 +73,22 @@ flights %>% group_by(carrier,flight,dest) %>%  summarise(times = n()) %>% filter
 
 
 
-#For each day of the year, count the total number of flights
+#For each day of the year, count the total number of flights. And the evolution
 flights %>%
   group_by(date) %>%
-  summarise(number_of_flights = n()) %>% arrange(desc(number_of_flights))
+  arrange(desc(date)) %>% 
+  summarise(number_of_flights = as.numeric(n())) %>% 
+  mutate(slag = number_of_flights - lag(number_of_flights)) %>%
+  ggplot(aes(x = date, y = slag)) + geom_line()
 
-#Which destinations have the highest average delays?
+#Which destinations have the highest average arr_delays and dep_delay?
 flights %>% 
-  group_by(dest) %>%
-  summarise(average_delay = mean(arr_delay, na.rm = TRUE)) %>%
-  arrange(desc(average_delay)) 
+  group_by(carrier, dest) %>%
+  summarise(average_arr_delay = mean(arr_delay, na.rm = TRUE), average_dep_delay = 
+              mean(dep_delay, na.rm =TRUE), n = n(), tim = mean(time, na.rm = TRUE)) %>%
+  filter(carrier %in% c("UA")) %>%
+  ggplot(aes(x = average_arr_delay, y = dest, size  = average_dep_delay, color = tim)) + 
+  geom_point()
 
 #How do delays vary on the course of the day?
 flights %>%
@@ -90,7 +96,7 @@ flights %>%
   group_by(hour,minute) %>%
   summarise(avg_delay = mean(dep_delay, na.rm = TRUE))
  
-#Now combining dplyr and ggplot for rapid exploratory analysis
+#Now combining dplyr and ggplot 
 
 #1. What is the average dep and arr delay for each carrier?
 #Plotting a scatterplot
@@ -111,15 +117,16 @@ flights %>%
   geom_point() +
   scale_size_area() 
 
-#3. Plot about the percentage of departure delays of each carrier.
+#3. Plot about the probability of departure delays of each carrier.
 flights %>%
-  group_by(carrier) %>%
+  group_by(carrier, dest) %>%
   mutate(is_delayed = dep_delay >= 0, is_arr_delayed = arr_delay >= 0  ) %>%
   summarise(me_delay = mean(is_delayed, na.rm = TRUE),
             me_arr_delay = mean(is_arr_delayed, na.rm = TRUE),me_canc = mean(cancelled, na.rm = TRUE)
             , n = n ()) %>%
   filter(n >2500) %>%
-  ggplot(aes(x = carrier, y = me_delay, size= n )) + geom_point() + scale_size_area()
+  ggplot(aes(x = carrier, y = me_delay, color = dest)) + geom_point() + scale_size_area()
+
 
 
 
@@ -197,4 +204,8 @@ View(plane_delay)
 plane_delay %>%
   filter(n >50) %>%
   ggplot(aes(y = delay, x = year)) + geom_point() + geom_smooth() + xlim(1980,2015 )
+  
+
+
+
 
