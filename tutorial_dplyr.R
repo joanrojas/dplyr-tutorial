@@ -47,14 +47,13 @@ filter(summarise(by_date, mean_distance = mean(dist), mean_dep_delay = mean(dep_
 
 
 #Which destinations have the higher average delays? (departure)
-flights %>% group_by(dest) %>% summarise(dep_d = mean(dep_delay, na.rm= TRUE)) %>% arrange(desc(dep_d))
+flights %>% group_by(dest) %>% summarise(dep_d = mean(dep_delay, na.rm= TRUE), n = n())
 
 
 #Which flights ( carrier+flight number + destination) happen every day? Where do they fly to?
 flights %>% group_by(carrier, flight, dest) %>% summarise(n=n()) %>% filter(n == 365)
 
 
-flights %>% select(carrier,dep_delay) %>% arrange(dep_delay)
 
 flights %>% select(dist,time) %>% mutate(speedy = dist / (time/60))
 
@@ -67,7 +66,8 @@ flights %>% group_by(carrier) %>% summarise( Percentage_cancelled = mean(cancell
 
 #For each carrier, maximum and minimum departure delay VERY NICE!!
 flights %>% group_by(carrier) %>% 
-  summarise_each(funs(max(., na.rm = TRUE), min(., na.rm = TRUE)), matches("delay"))
+  summarise_each(funs(max(., na.rm = TRUE), min(., na.rm = TRUE)), matches("delay")) %>%
+  arrange(desc(dep_delay_max))
 
 flights %>% group_by(carrier,flight,dest) %>%  summarise(times = n()) %>% filter(carrier == "AA" , times == 365)
 
@@ -87,7 +87,7 @@ flights %>%
   summarise(average_arr_delay = mean(arr_delay, na.rm = TRUE), average_dep_delay = 
               mean(dep_delay, na.rm =TRUE), n = n(), tim = mean(time, na.rm = TRUE)) %>%
   filter(carrier %in% c("UA")) %>%
-  ggplot(aes(x = average_arr_delay, y = dest, size  = average_dep_delay, color = tim)) + 
+  ggplot(aes(x = average_arr_delay, y = dest, size = average_dep_delay)) + 
   geom_point()
 
 #How do delays vary on the course of the day?
@@ -111,7 +111,7 @@ flights %>%
   mutate(time_of_day = hour + minute/60) %>%
   group_by(time_of_day) %>%
   summarise(dep_delay = mean(dep_delay, na.rm= TRUE), n = n()) %>%
-  arrange(desc(dep_delay)) %>%
+  arrange(desc(n)) %>%
   filter(n >50) %>%
   ggplot(aes(x = time_of_day , y = dep_delay, size = n)) + 
   geom_point() +
@@ -204,8 +204,5 @@ View(plane_delay)
 plane_delay %>%
   filter(n >50) %>%
   ggplot(aes(y = delay, x = year)) + geom_point() + geom_smooth() + xlim(1980,2015 )
-  
-
-
 
 

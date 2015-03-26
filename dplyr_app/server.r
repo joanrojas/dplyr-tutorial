@@ -20,13 +20,6 @@ shinyServer(
         ggtitle("Dep/Arriv delays") + labs(x = "Arrival delay [min]", y = "Destination")
       
     })
-    
-   
-        
       
-      
-    
-    
-    
   }
 )

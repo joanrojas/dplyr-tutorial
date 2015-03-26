@@ -1,0 +1,49 @@
+---
+title: "dplyr-tutorial"
+author: "Joan Rojas"
+date: "24 Mar 2015"
+runtime: shiny
+output: 
+  html_document:
+    theme: flatly
+---
+
+
+
+This is my first rmd document. Recently I completed the dplyr tutorial from Hadley Wickham. You can find Part I [here](http://datascience.la/hadley-wickhams-dplyr-tutorial-at-user-2014-part-1/) and Part II [here](http://www.r-bloggers.com/hadley-wickhams-dplyr-tutorial-at-user-2014-part-2/).
+
+First I load the libraries and the dataset used in this tutorial. In this case, the `flights`dataset is explored. It contains information of outgoing flights from the Houston airport. The variables of this dataset are the following:
+
+```{r message = FALSE, echo = FALSE}
+library(ggplot2)
+library(dplyr)
+flights <- tbl_df(read.csv("flights.csv", stringsAsFactors = FALSE))
+flights$date <- as.Date(flights$date)
+names(flights)
+```
+
+The dplyr package has five main verbs:
+
+* `filter` used to select rows based on some criteria
+* `select` used to select columns based on some criteria
+* `mutate` to create or modify variables
+* `arrange` to arrange the rows
+* `summarise`
+
+It is very interesting to combine them using the opertaor `%>%`which can be interpreted as **then**.
+
+The figure below shows the average distance flight the selected carrier flew in that year.
+
+```{r echo = FALSE, fig.align='center' , fig.height= 2 , fig.width= 2, fig.star = TRUE }
+c <- flights %>% distinct(carrier) %>% select(carrier)
+selectInput("carrier", label = "Select Carrier", choices = c$carrier,
+            multiple = TRUE)
+
+renderPlot({
+flights %>% select(carrier, dist) %>%
+  filter(carrier %in% as.character(input$carrier)) %>%
+  group_by(carrier) %>%
+  summarise(distance = mean(dist, na.rm = TRUE)) %>%
+  ggplot(aes( y = distance , x = carrier)) + geom_bar(stat = "identity")
+})
+```
